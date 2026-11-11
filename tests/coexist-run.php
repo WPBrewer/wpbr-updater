@@ -5,11 +5,14 @@ declare(strict_types=1);
 /**
  * Two Strauss-prefixed plugins on one WordPress site.
  *
- * Plugin one vendors this tree (1.0.0, prefix WpbrDemoOne).
+ * Plugin one vendors this tree (1.0.1, prefix WpbrDemoOne).
  * Plugin two vendors 0f9c2f4 (0.2.0, prefix WpbrDemoTwo).
  *
- * Usage: php tests/coexist-run.php
- * Needs composer install, then tests/install-wp-tests.sh (run automatically
+ * Build on PHP 8.1+:  php tests/coexist-run.php build
+ * Run the built site: php tests/coexist-run.php exec
+ * Both, on PHP 8.1+:  php tests/coexist-run.php
+ *
+ * exec needs composer install, then tests/install-wp-tests.sh (run automatically
  * when WordPress core is missing). DB: WP_TEST_DB_USER / WP_TEST_DB_PASS /
  * WP_TEST_DB_HOST, defaults wp / wp / 127.0.0.1.
  *
@@ -31,13 +34,40 @@ if (strncmp($command, 'ctl-', 4) === 0) {
 }
 
 try {
-    wpbr_coexist_run();
+    if ($command === 'build') {
+        wpbr_coexist_build_plugins();
+    } elseif ($command === 'exec') {
+        wpbr_coexist_execute();
+    } elseif ($command === 'run') {
+        wpbr_coexist_build_plugins();
+        wpbr_coexist_execute();
+    } else {
+        throw new RuntimeException('Unknown command ' . $command . '. Use build, exec, or run.');
+    }
 } catch (Throwable $exception) {
     fwrite(STDERR, $exception->getMessage() . "\n");
     exit(1);
 }
 
-function wpbr_coexist_run(): void
+function wpbr_coexist_build_plugins(): void
+{
+    if (PHP_VERSION_ID < 80100) {
+        throw new RuntimeException('Strauss runs on PHP 8.1 or newer. This PHP is ' . PHP_VERSION . '.');
+    }
+
+    $root = dirname(__DIR__);
+    $composer = wpbr_coexist_composer();
+    $work = wpbr_coexist_work();
+    wpbr_coexist_reset_dir($work);
+    wpbr_coexist_export_current($root, $work . '/pkg-1.0.1');
+    wpbr_coexist_export_older($root, $work . '/pkg-0.2.0');
+    wpbr_coexist_install_strauss($root, $composer);
+    foreach (wpbr_coexist_specs($work) as $spec) {
+        wpbr_coexist_build($root, $composer, $spec);
+    }
+}
+
+function wpbr_coexist_execute(): void
 {
     $root = dirname(__DIR__);
     if (!is_file($root . '/vendor/autoload.php')) {
@@ -45,8 +75,6 @@ function wpbr_coexist_run(): void
     }
     require $root . '/vendor/autoload.php';
 
-    $composer = getenv('COMPOSER_BIN');
-    $composer = is_string($composer) && $composer !== '' ? $composer : 'composer';
     $core = getenv('WP_CORE_DIR') ?: '/tmp/wpbr-wp-core';
     if (!is_file($core . '/wp-settings.php')) {
         echo "Installing WordPress core\n";
@@ -56,46 +84,12 @@ function wpbr_coexist_run(): void
         }
     }
 
-    $work = '/tmp/wpbr-coexist-build';
-    wpbr_coexist_reset_dir($work);
-    $current = $work . '/pkg-1.0.0';
-    $older = $work . '/pkg-0.2.0';
-    wpbr_coexist_export_current($root, $current);
-    wpbr_coexist_export_older($root, $older);
-
-    $specs = [
-        [
-            'dir' => $work . '/wpbr-demo-one',
-            'slug' => 'wpbr-demo-one',
-            'name' => 'WPBrewer Demo One',
-            'option' => 'wpbr_demo_one_license',
-            'prefix' => 'WpbrDemoOne',
-            'classmap' => 'WpbrDemoOne_',
-            'constant' => 'WPBR_DEMO_ONE_',
-            'constraint' => '^1.0.0',
-            'alias' => '1.0.0',
-            'library' => '1.0.0',
-            'package' => $current,
-            'basename' => WPBR_COEXIST_ONE,
-        ],
-        [
-            'dir' => $work . '/wpbr-demo-two',
-            'slug' => 'wpbr-demo-two',
-            'name' => 'WPBrewer Demo Two',
-            'option' => 'wpbr_demo_two_license',
-            'prefix' => 'WpbrDemoTwo',
-            'classmap' => 'WpbrDemoTwo_',
-            'constant' => 'WPBR_DEMO_TWO_',
-            'constraint' => '0.2.0',
-            'alias' => '0.2.0',
-            'library' => '0.2.0',
-            'package' => $older,
-            'basename' => WPBR_COEXIST_TWO,
-        ],
-    ];
-
+    $work = wpbr_coexist_work();
+    $specs = wpbr_coexist_specs($work);
     foreach ($specs as $spec) {
-        wpbr_coexist_build($root, $composer, $spec);
+        if (!is_file($spec['dir'] . '/vendor-prefixed/autoload.php')) {
+            throw new RuntimeException('Missing build for ' . $spec['slug'] . '. On PHP 8.1+: php tests/coexist-run.php build');
+        }
     }
 
     $live = '/tmp/wpbr-coexist';
@@ -168,10 +162,10 @@ function wpbr_coexist_run(): void
         throw new RuntimeException('ctl-read did not return JSON: ' . $read['out']);
     }
 
-    wpbr_coexist_assert(($state['one_exists'] ?? false) === true, 'prefixed 1.0.0 class missing');
+    wpbr_coexist_assert(($state['one_exists'] ?? false) === true, 'prefixed 1.0.1 class missing');
     wpbr_coexist_assert(($state['two_exists'] ?? false) === true, 'prefixed 0.2.0 class missing');
     wpbr_coexist_assert(($state['unprefixed'] ?? true) === false, 'unprefixed WPBrewer\\Updater\\Updater is loaded');
-    wpbr_coexist_assert(($state['one_version'] ?? '') === '1.0.0', 'demo one library version ' . ($state['one_version'] ?? ''));
+    wpbr_coexist_assert(($state['one_version'] ?? '') === '1.0.1', 'demo one library version ' . ($state['one_version'] ?? ''));
     wpbr_coexist_assert(($state['two_version'] ?? '') === '0.2.0', 'demo two library version ' . ($state['two_version'] ?? ''));
     wpbr_coexist_assert(($state['one_active'] ?? false) === true, 'demo one is not active');
     wpbr_coexist_assert(($state['two_active'] ?? false) === true, 'demo two is not active');
@@ -181,11 +175,96 @@ function wpbr_coexist_run(): void
     wpbr_coexist_assert(strpos((string) ($state['two_package'] ?? ''), '127.0.0.1:8080/wpbr-download/') !== false, 'demo two package missing');
     wpbr_coexist_assert_log_empty($log);
 
-    echo "EVIDENCE classes WpbrDemoOne\\WPBrewer\\Updater\\Updater 1.0.0 and WpbrDemoTwo\\WPBrewer\\Updater\\Updater 0.2.0, unprefixed class absent\n";
+    echo "EVIDENCE classes WpbrDemoOne\\WPBrewer\\Updater\\Updater 1.0.1 and WpbrDemoTwo\\WPBrewer\\Updater\\Updater 0.2.0, unprefixed class absent\n";
     echo "EVIDENCE transient {$state['one_basename']} new_version=1.2.0 package={$state['one_package']}\n";
     echo "EVIDENCE transient {$state['two_basename']} new_version=1.2.0 package={$state['two_package']}\n";
     echo "EVIDENCE wordpress {$state['wp_version']} debug.log empty\n";
     echo "COEXIST OK\n";
+}
+
+function wpbr_coexist_work(): string
+{
+    $work = getenv('WPBR_COEXIST_BUILD');
+    return is_string($work) && $work !== '' ? $work : '/tmp/wpbr-coexist-build';
+}
+
+function wpbr_coexist_composer(): string
+{
+    $composer = getenv('COMPOSER_BIN');
+    return is_string($composer) && $composer !== '' ? $composer : 'composer';
+}
+
+/**
+ * @return list<array<string, string>>
+ */
+function wpbr_coexist_specs(string $work): array
+{
+    return [
+        [
+            'dir' => $work . '/wpbr-demo-one',
+            'slug' => 'wpbr-demo-one',
+            'name' => 'WPBrewer Demo One',
+            'option' => 'wpbr_demo_one_license',
+            'prefix' => 'WpbrDemoOne',
+            'classmap' => 'WpbrDemoOne_',
+            'constant' => 'WPBR_DEMO_ONE_',
+            'constraint' => '^1.0.0',
+            'alias' => '1.0.1',
+            'library' => '1.0.1',
+            'package' => $work . '/pkg-1.0.1',
+            'basename' => WPBR_COEXIST_ONE,
+        ],
+        [
+            'dir' => $work . '/wpbr-demo-two',
+            'slug' => 'wpbr-demo-two',
+            'name' => 'WPBrewer Demo Two',
+            'option' => 'wpbr_demo_two_license',
+            'prefix' => 'WpbrDemoTwo',
+            'classmap' => 'WpbrDemoTwo_',
+            'constant' => 'WPBR_DEMO_TWO_',
+            'constraint' => '0.2.0',
+            'alias' => '0.2.0',
+            'library' => '0.2.0',
+            'package' => $work . '/pkg-0.2.0',
+            'basename' => WPBR_COEXIST_TWO,
+        ],
+    ];
+}
+
+function wpbr_coexist_install_strauss(string $root, string $composer): void
+{
+    $tool = $root . '/tools/strauss';
+    echo 'Installing Strauss on PHP ' . PHP_VERSION . "\n";
+    $install = wpbr_coexist_proc(
+        [$composer, 'install', '--no-interaction', '--prefer-dist', '--no-progress', '--no-dev'],
+        $tool
+    );
+    if ($install['code'] !== 0) {
+        throw new RuntimeException($install['out']);
+    }
+    echo $install['out'];
+
+    $audit = wpbr_coexist_proc([$composer, 'audit', '--no-interaction'], $tool);
+    echo $audit['out'];
+    if ($audit['code'] !== 0) {
+        throw new RuntimeException($audit['out']);
+    }
+
+    $show = wpbr_coexist_proc(
+        [$composer, 'show', 'league/flysystem', '--no-interaction', '--no-ansi'],
+        $tool
+    );
+    echo $show['out'];
+    if ($show['code'] !== 0) {
+        throw new RuntimeException($show['out']);
+    }
+    if (!preg_match('/versions\\s*:\\s*\\*\\s*(\\d+\\.\\d+\\.\\d+)/', $show['out'], $match)) {
+        throw new RuntimeException('Could not read the flysystem version Strauss resolved.');
+    }
+    if (version_compare($match[1], '3.35.3', '<')) {
+        throw new RuntimeException('Strauss resolved league/flysystem ' . $match[1] . '.');
+    }
+    echo 'EVIDENCE league/flysystem ' . $match[1] . "\n";
 }
 
 /**
@@ -231,19 +310,27 @@ function wpbr_coexist_build(string $root, string $composer, array $spec): void
     file_put_contents($spec['dir'] . '/composer.json', $encoded . "\n");
 
     $update = wpbr_coexist_proc(
-        [$composer, 'update', '--no-interaction', '--prefer-dist', '--no-progress', '--no-plugins', '--no-security-blocking'],
+        [$composer, 'update', '--no-interaction', '--prefer-dist', '--no-progress', '--no-plugins'],
         $spec['dir']
     );
     if ($update['code'] !== 0) {
         throw new RuntimeException($update['out']);
     }
-    $strauss = wpbr_coexist_proc(
-        [PHP_BINARY, '-d', 'memory_limit=1G', $spec['dir'] . '/vendor/bin/strauss'],
+    $audit = wpbr_coexist_proc([$composer, 'audit', '--no-interaction'], $spec['dir']);
+    echo $audit['out'];
+    if ($audit['code'] !== 0) {
+        throw new RuntimeException($audit['out']);
+    }
+    $strauss = $root . '/tools/strauss/strauss.php';
+    $run = wpbr_coexist_proc(
+        [PHP_BINARY, '-d', 'memory_limit=1G', $strauss],
         $spec['dir']
     );
-    if ($strauss['code'] !== 0) {
-        throw new RuntimeException($strauss['out']);
+    if ($run['code'] !== 0) {
+        throw new RuntimeException($run['out']);
     }
+    wpbr_coexist_assert_no_flysystem($spec['dir'] . '/vendor-prefixed');
+    echo "EVIDENCE {$spec['slug']} vendor-prefixed has no flysystem\n";
 
     $updater = (string) file_get_contents($spec['dir'] . '/vendor-prefixed/wpbrewer/wpbr-updater/src/Updater.php');
     $main = (string) file_get_contents($spec['dir'] . '/wpbr-updater-demo.php');
@@ -632,5 +719,31 @@ function wpbr_coexist_assert(bool $condition, string $message): void
 {
     if (!$condition) {
         throw new RuntimeException($message);
+    }
+}
+
+function wpbr_coexist_assert_no_flysystem(string $dir): void
+{
+    if (!is_dir($dir)) {
+        throw new RuntimeException('Missing prefixed directory ' . $dir);
+    }
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $item) {
+        if (!$item instanceof SplFileInfo) {
+            continue;
+        }
+        $path = $item->getPathname();
+        if (stripos($path, 'flysystem') !== false) {
+            throw new RuntimeException('vendor-prefixed contains flysystem: ' . $path);
+        }
+        if (!$item->isFile() || substr($path, -4) !== '.php') {
+            continue;
+        }
+        $text = (string) file_get_contents($path);
+        if (strpos($text, 'namespace League\\Flysystem') !== false) {
+            throw new RuntimeException('vendor-prefixed contains Flysystem code: ' . $path);
+        }
     }
 }

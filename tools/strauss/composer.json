@@ -1,0 +1,15 @@
+{
+    "description": "Build-only Strauss install. PHP 8. Not shipped and not a dependency of wpbr-updater.",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1",
+        "brianhenryie/strauss": "0.31.1"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.1.33"
+        },
+        "allow-plugins": true
+    }
+}

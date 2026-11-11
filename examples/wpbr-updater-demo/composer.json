@@ -7,9 +7,6 @@
         "php": ">=7.4",
         "wpbrewer/wpbr-updater": "^1.0.0"
     },
-    "require-dev": {
-        "brianhenryie/strauss": "^0.31.1"
-    },
     "repositories": [
         {
             "type": "path",
@@ -17,7 +14,7 @@
             "options": {
                 "symlink": false,
                 "versions": {
-                    "wpbrewer/wpbr-updater": "1.0.0"
+                    "wpbrewer/wpbr-updater": "1.0.1"
                 }
             }
         }
@@ -38,7 +35,9 @@
             "exclude_from_copy": {
                 "file_patterns": [
                     "#/tests/#",
-                    "#/\\.github/#"
+                    "#/\\.github/#",
+                    "#/tools/#",
+                    "#/vendor/#"
                 ]
             },
             "parallel": false
@@ -52,6 +51,6 @@
         "allow-plugins": true
     },
     "scripts": {
-        "prefix": "@php -d memory_limit=1G vendor/bin/strauss"
+        "prefix": "@php -d memory_limit=1G ../../tools/strauss/strauss.php"
     }
 }

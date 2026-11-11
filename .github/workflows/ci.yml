@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.1', '8.4']
+        php: ['8.1', '8.4']
     services:
       mysql:
         image: mysql:8.0
@@ -45,6 +45,9 @@ jobs:
       - name: Composer install
         run: composer install --no-interaction --prefer-dist
 
+      - name: composer audit
+        run: composer audit --no-interaction
+
       - name: php -l
         run: find src tests examples -name '*.php' -print0 | xargs -0 -n1 php -l
 
@@ -60,5 +63,125 @@ jobs:
       - name: PHPStan
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
+  package:
+    name: Package on PHP 8.3
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, dom, intl, mbstring, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: composer audit
+        run: composer audit --locked --no-interaction
+
+      - name: composer audit Strauss
+        working-directory: tools/strauss
+        run: composer audit --locked --no-interaction
+
+      - name: Strauss flysystem
+        working-directory: tools/strauss
+        run: composer show league/flysystem --locked --no-interaction --no-ansi
+
+      - name: Build prefixed plugins
+        run: php tests/coexist-run.php build
+
+      - name: Upload prefixed build
+        uses: actions/upload-artifact@v4
+        with:
+          name: prefixed-plugins
+          path: /tmp/wpbr-coexist-build
+          if-no-files-found: error
+          retention-days: 5
+
+  runtime-php74:
+    name: PHP 7.4 runtime
+    needs: package
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      WP_TEST_DB_NAME: wordpress_test
+      WP_TEST_DB_USER: root
+      WP_TEST_DB_PASS: root
+      WP_TEST_DB_HOST: 127.0.0.1
+      WP_CORE_DIR: /tmp/wpbr-wp-core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: curl, dom, intl, mbstring, mysqli, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Prefixed build
+        uses: actions/download-artifact@v4
+        with:
+          name: prefixed-plugins
+          path: /tmp/wpbr-coexist-build
+
+      - name: Built package matches src
+        run: diff -r src /tmp/wpbr-coexist-build/pkg-1.0.1/src
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist
+
+      - name: composer audit
+        run: composer audit --no-interaction
+
+      - name: php -l source
+        run: find src tests examples -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: php -l built files
+        run: find /tmp/wpbr-coexist-build/wpbr-demo-one/vendor-prefixed /tmp/wpbr-coexist-build/wpbr-demo-two/vendor-prefixed /tmp/wpbr-coexist-build/wpbr-demo-one/wpbr-updater-demo.php /tmp/wpbr-coexist-build/wpbr-demo-two/wpbr-updater-demo.php -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: PHP 7.4 rejects PHP 8 syntax
+        run: |
+          set -euo pipefail
+          f=/tmp/wpbr-coexist-build/wpbr-demo-one/vendor-prefixed/php8-only.php
+          printf '%s\n' '<?php class WpbrPhp8Only { public function f(string|int $x) {} }' > "$f"
+          set +e
+          out=$(php -l "$f" 2>&1)
+          code=$?
+          set -e
+          rm -f "$f"
+          printf '%s\n' "$out"
+          if [ "$code" -eq 0 ]; then
+            echo "php -l on PHP 7.4 accepted a union type"
+            exit 1
+          fi
+          echo "BREAKAGE OK: php -l rejected PHP 8 union types"
+
+      - name: composer validate
+        run: composer validate --strict
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: WordPress test library
+        run: bash tests/install-wp-tests.sh
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit --colors=never
+
       - name: Two-plugin coexistence
-        run: php tests/coexist-run.php
+        run: php tests/coexist-run.php exec
