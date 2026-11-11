@@ -46,6 +46,8 @@ if (!class_exists('WpbrFakeLicenseServer', false)) {
             if ($bucket === 'update-info') {
                 $state['last_update_body'] = $rawBody;
             }
+            $state['last_' . $bucket . '_body'] = $rawBody;
+            $state['last_uri'] = (string) ($_SERVER['REQUEST_URI'] ?? '');
             file_put_contents($stateFile, (string) json_encode($state, JSON_UNESCAPED_SLASHES));
 
             $mode = (string) ($state['mode'] ?? 'update');
@@ -68,6 +70,21 @@ if (!class_exists('WpbrFakeLicenseServer', false)) {
                 return;
             }
 
+            if ($bucket === 'activate') {
+                self::activate($state, $mode, $rawBody);
+                return;
+            }
+
+            if ($bucket === 'deactivate') {
+                self::deactivate($state, $mode, $rawBody);
+                return;
+            }
+
+            if ($bucket === 'check') {
+                self::check($state, $mode, $rawBody);
+                return;
+            }
+
             self::error(404, 'release_not_found', 'Not found.');
         }
 
@@ -85,7 +102,157 @@ if (!class_exists('WpbrFakeLicenseServer', false)) {
             if ($method === 'GET' && strpos($path, '/wpbr-download/') !== false) {
                 return 'download';
             }
+            if ($method === 'POST' && substr($path, -9) === '/activate') {
+                return 'activate';
+            }
+            if ($method === 'POST' && substr($path, -11) === '/deactivate') {
+                return 'deactivate';
+            }
+            if ($method === 'POST' && substr($path, -6) === '/check') {
+                return 'check';
+            }
             return 'other';
+        }
+
+        /**
+         * @param array<string, mixed> $state
+         */
+        private static function activate(array $state, string $mode, string $rawBody): void
+        {
+            if (self::blocked($mode)) {
+                return;
+            }
+
+            $body = self::body($rawBody);
+            if ($body === null) {
+                return;
+            }
+
+            $key = $body['license_key'] ?? '';
+            $expected = (string) ($state['license_key'] ?? 'WPBR-TEST-KEY-0123456789ABCD');
+            if (!is_string($key) || strlen($key) !== strlen($expected) || !hash_equals($expected, $key)) {
+                self::error(404, 'license_not_found', 'License key not found.');
+                return;
+            }
+
+            $licenseError = (string) ($state['license_error'] ?? '');
+            if ($licenseError === 'limit_reached') {
+                self::error(403, 'limit_reached', 'Limit reached.');
+                return;
+            }
+
+            $status = (string) ($state['license_status'] ?? 'active');
+            if ($status === 'revoked') {
+                self::error(403, 'license_revoked', 'Revoked.');
+                return;
+            }
+
+            $token = (string) ($state['instance_token'] ?? '0123456789abcdef0123456789abcdef');
+            self::json(200, [
+                'instance_token' => $token,
+                'license' => self::licenseSummary($state, $status),
+            ]);
+        }
+
+        /**
+         * @param array<string, mixed> $state
+         */
+        private static function deactivate(array $state, string $mode, string $rawBody): void
+        {
+            unset($state);
+            if (self::blocked($mode)) {
+                return;
+            }
+
+            $body = self::body($rawBody);
+            if ($body === null) {
+                return;
+            }
+
+            $token = $body['instance_token'] ?? '';
+            if (!is_string($token) || preg_match('/^[A-Za-z0-9_-]{32,255}$/', $token) !== 1) {
+                self::error(401, 'invalid_token', 'Invalid token.');
+                return;
+            }
+
+            self::json(200, ['ok' => true]);
+        }
+
+        /**
+         * @param array<string, mixed> $state
+         */
+        private static function check(array $state, string $mode, string $rawBody): void
+        {
+            if (self::blocked($mode)) {
+                return;
+            }
+
+            $body = self::body($rawBody);
+            if ($body === null) {
+                return;
+            }
+
+            $token = $body['instance_token'] ?? '';
+            $expected = (string) ($state['instance_token'] ?? '0123456789abcdef0123456789abcdef');
+            if (!is_string($token) || strlen($token) !== strlen($expected) || !hash_equals($expected, $token)) {
+                self::error(401, 'invalid_token', 'Invalid token.');
+                return;
+            }
+
+            $status = (string) ($state['license_status'] ?? 'active');
+            self::json(200, self::licenseSummary($state, $status));
+        }
+
+        private static function blocked(string $mode): bool
+        {
+            if ($mode === 'http_500') {
+                self::error(500, 'server_error', 'Unexpected failure.');
+                return true;
+            }
+            if ($mode === 'html' || $mode === 'timeout') {
+                self::html();
+                return true;
+            }
+
+            return false;
+        }
+
+        /**
+         * @return array<string, mixed>|null
+         */
+        private static function body(string $rawBody): ?array
+        {
+            $decoded = json_decode($rawBody, true);
+            if (!is_array($decoded)) {
+                self::error(400, 'invalid_request', 'Invalid request.');
+                return null;
+            }
+
+            /** @var array<string, mixed> $decoded */
+            return $decoded;
+        }
+
+        /**
+         * @param array<string, mixed> $state
+         * @return array{status: string, expires_at: string, sites_used: int, sites_limit: int}
+         */
+        private static function licenseSummary(array $state, string $status): array
+        {
+            if ($status !== 'active' && $status !== 'expired' && $status !== 'revoked') {
+                $status = 'active';
+            }
+
+            $expires = $state['license_expires_at'] ?? '';
+            if (!is_string($expires) || $expires === '') {
+                $expires = $status === 'expired' ? '2020-01-01T00:00:00Z' : '2027-11-15T00:00:00Z';
+            }
+
+            return [
+                'status' => $status,
+                'expires_at' => $expires,
+                'sites_used' => (int) ($state['sites_used'] ?? 1),
+                'sites_limit' => (int) ($state['sites_limit'] ?? 3),
+            ];
         }
 
         /**

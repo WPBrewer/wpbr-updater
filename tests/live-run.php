@@ -170,6 +170,8 @@ function wpbr_live_run(): void
     echo "EVIDENCE bad sha256 blocked code=wpbr_updater_checksum installed version stays 1.0.0 downloads=" . FakeServer::hits('download') . "\n";
     wpbr_live_assert_log_empty($log);
 
+    wpbr_live_license($live, $cookie, $log, $zip, $sha);
+
     $version = (string) (wpbr_live_read($live)['wp_version'] ?? '');
     echo "EVIDENCE wordpress {$version} debug.log empty\n";
     echo "LIVE OK\n";
@@ -433,6 +435,11 @@ WPBrewer\\Updater\\Updater::register([
     'version' => '1.0.0',
     'license_option' => 'wpbr_dummy_license',
 ]);
+
+function wpbr_dummy_feature(): string
+{
+    return 'working';
+}
 PHP;
     file_put_contents($dir . '/wpbr-dummy.php', $php);
 }
@@ -505,6 +512,13 @@ function wpbr_live_ctl(string $command): void
             ? $transient->response[WPBR_LIVE_BASENAME]
             : null;
         $cache = get_option(WPBR_LIVE_CACHE, null);
+        global $wpdb;
+        $license = get_option('wpbr_dummy_license', null);
+        $autoload = $wpdb->get_var($wpdb->prepare(
+            "SELECT autoload FROM {$wpdb->options} WHERE option_name = %s",
+            'wpbr_dummy_license'
+        ));
+        $active = get_option('active_plugins', []);
         echo (string) json_encode([
             'wp_version' => get_bloginfo('version'),
             'transient_version' => is_object($item) ? (string) ($item->new_version ?? '') : '',
@@ -512,7 +526,38 @@ function wpbr_live_ctl(string $command): void
             'cache' => is_array($cache) ? $cache : null,
             'auto' => get_site_option('auto_update_plugins', []),
             'version' => wpbr_live_installed_version(),
+            'license' => is_array($license) ? $license : null,
+            'autoload' => is_string($autoload) ? $autoload : null,
+            'active' => is_array($active) ? $active : [],
+            'licensed' => \WPBrewer\Updater\Updater::is_licensed('wpbr-dummy'),
+            'expires_at' => \WPBrewer\Updater\Updater::expires_at('wpbr-dummy'),
+            'locale' => get_locale(),
         ]);
+        return;
+    }
+
+    if ($command === 'ctl-clear-license') {
+        delete_option('wpbr_dummy_license');
+        return;
+    }
+
+    if ($command === 'ctl-lang') {
+        $locale = $argv[3] ?? '';
+        if ($locale !== '' && $locale !== 'en_US' && preg_match('/^[A-Za-z0-9_]+$/', $locale) !== 1) {
+            fwrite(STDERR, "Bad locale\n");
+            exit(1);
+        }
+        update_option('WPLANG', $locale === 'en_US' ? '' : $locale);
+        echo (string) get_option('WPLANG', '');
+        return;
+    }
+
+    if ($command === 'ctl-feature') {
+        if (!function_exists('wpbr_dummy_feature')) {
+            fwrite(STDERR, "feature missing\n");
+            exit(1);
+        }
+        echo wpbr_dummy_feature();
         return;
     }
 
@@ -563,4 +608,208 @@ function wpbr_live_installed_version(): string
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     $data = get_plugin_data(WP_PLUGIN_DIR . '/' . WPBR_LIVE_BASENAME, false, false);
     return (string) ($data['Version'] ?? '');
+}
+
+function wpbr_live_license(string $live, string $cookie, string $log, string $zip, string $sha): void
+{
+    $page = 'http://127.0.0.1:8090/wp-admin/admin.php?page=wpbr-license-wpbr-dummy';
+    $post = 'http://127.0.0.1:8090/wp-admin/admin-post.php';
+    $key = 'WPBR-TEST-KEY-0123456789ABCD';
+
+    FakeServer::setMode('update', ['license_status' => 'active']);
+    $cleared = wpbr_live_proc([PHP_BINARY, __FILE__, 'ctl-clear-license', $live]);
+    wpbr_live_assert($cleared['code'] === 0, $cleared['out']);
+
+    $screen = wpbr_live_http($page, $cookie);
+    wpbr_live_assert($screen['status'] === 200, 'license screen status ' . $screen['status']);
+    wpbr_live_assert_contains($screen['body'], 'License key', 'en_US key label missing');
+    wpbr_live_assert_contains($screen['body'], '>Activate<', 'en_US activate button missing');
+    wpbr_live_assert_contains($screen['body'], 'method="post"', 'activate form is not a POST');
+    wpbr_live_assert_contains($screen['body'], 'admin-post.php', 'activate form does not post to admin-post.php');
+    wpbr_live_assert_contains($screen['body'], 'name="license_key"', 'key field missing');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE en_US license screen 200 plain POST form, no JavaScript\n";
+
+    $activated = wpbr_live_license_post($post, $cookie, $screen['body'], 'activate', $key);
+    wpbr_live_assert($activated['status'] === 200, 'activate status ' . $activated['status']);
+    wpbr_live_assert_contains($activated['body'], 'License activated.', 'activate success missing');
+    wpbr_live_assert_contains($activated['body'], '********ABCD', 'mask missing');
+    wpbr_live_assert(!wpbr_live_contains($activated['body'], $key), 'full license key is on the screen');
+    wpbr_live_assert_contains($activated['body'], '1 / 3', 'sites used missing');
+    $state = wpbr_live_read($live);
+    $stored = $state['license'] ?? null;
+    wpbr_live_assert(is_array($stored), 'license option missing after activate');
+    $encoded = (string) json_encode($stored);
+    wpbr_live_assert(!wpbr_live_contains($encoded, 'WPBR-TEST-KEY'), 'full key stored in the option');
+    wpbr_live_assert(($stored['instance_token'] ?? '') === WPBR_LIVE_TOKEN, 'instance token mismatch');
+    wpbr_live_assert(in_array($state['autoload'] ?? '', ['no', 'off', 'auto-off'], true), 'autoload is ' . json_encode($state['autoload'] ?? null));
+    wpbr_live_assert(($state['licensed'] ?? false) === true, 'is_licensed() is false after activate');
+    wpbr_live_assert(($state['expires_at'] ?? '') === '2027-11-15T00:00:00Z', 'expires_at mismatch');
+    wpbr_live_assert_log_empty($log);
+    echo 'EVIDENCE activate masked ********ABCD autoload=' . (string) $state['autoload'] . " is_licensed=true expires_at=2027-11-15T00:00:00Z\n";
+
+    $plugins = wpbr_live_http('http://127.0.0.1:8090/wp-admin/plugins.php', $cookie);
+    wpbr_live_assert($plugins['status'] === 200, 'licensed plugins.php status ' . $plugins['status']);
+    wpbr_live_assert_contains($plugins['body'], 'License:', 'plugins row license status missing');
+    wpbr_live_assert_contains($plugins['body'], 'Active', 'plugins row is not Active');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE plugins row License: Active\n";
+
+    $checked = wpbr_live_license_post($post, $cookie, $activated['body'], 'status');
+    wpbr_live_assert($checked['status'] === 200, 'status check HTTP ' . $checked['status']);
+    wpbr_live_assert_contains($checked['body'], 'License status updated.', 'status refresh missing');
+    wpbr_live_assert(!wpbr_live_contains($checked['body'], $key), 'full key appeared after status');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE status check refreshed the stored summary\n";
+
+    $deactivated = wpbr_live_license_post($post, $cookie, $checked['body'], 'deactivate');
+    wpbr_live_assert($deactivated['status'] === 200, 'deactivate status ' . $deactivated['status']);
+    wpbr_live_assert_contains($deactivated['body'], 'License deactivated.', 'deactivate success missing');
+    wpbr_live_assert_contains($deactivated['body'], 'name="license_key"', 'key field did not return');
+    $state = wpbr_live_read($live);
+    wpbr_live_assert($state['license'] === null, 'token remained after deactivate');
+    wpbr_live_assert(($state['licensed'] ?? true) === false, 'is_licensed() stayed true after deactivate');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE deactivate removed the token\n";
+
+    $wrong = wpbr_live_license_post($post, $cookie, $deactivated['body'], 'activate', 'WPBR-WRONG-KEY');
+    wpbr_live_assert($wrong['status'] === 200, 'wrong key status ' . $wrong['status']);
+    wpbr_live_assert_contains($wrong['body'], 'License key not found.', 'wrong key message missing');
+    $state = wpbr_live_read($live);
+    wpbr_live_assert($state['license'] === null, 'wrong key stored a token');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE wrong key rejected, nothing stored\n";
+
+    FakeServer::stop();
+    $downStarted = microtime(true);
+    $down = wpbr_live_license_post($post, $cookie, $wrong['body'], 'activate', $key);
+    $downElapsed = microtime(true) - $downStarted;
+    wpbr_live_assert($down['status'] === 200, 'server down status ' . $down['status']);
+    wpbr_live_assert($downElapsed < 15, 'server down blocked wp-admin for ' . $downElapsed);
+    wpbr_live_assert_contains($down['body'], 'The license server could not be reached. The plugin keeps working.', 'server down message missing');
+    wpbr_live_assert(!wpbr_live_contains($down['body'], 'There has been a critical error'), 'server down fatals');
+    $state = wpbr_live_read($live);
+    wpbr_live_assert($state['license'] === null, 'server down stored a token');
+    wpbr_live_assert_log_empty($log);
+    echo 'EVIDENCE server down license POST 200 elapsed ' . number_format($downElapsed, 2) . "s token not stored\n";
+
+    FakeServer::start(FakeServer::baseState($zip, $sha));
+    FakeServer::setMode('update', ['license_status' => 'expired']);
+    $expired = wpbr_live_license_post($post, $cookie, $down['body'], 'activate', $key);
+    wpbr_live_assert($expired['status'] === 200, 'expired activate status ' . $expired['status']);
+    wpbr_live_assert_contains($expired['body'], 'License activated.', 'expired activate success missing');
+    wpbr_live_assert_contains($expired['body'], 'Updates have stopped. The plugin keeps working.', 'expired notice missing');
+    wpbr_live_assert_contains($expired['body'], '>Expired<', 'expired status missing');
+    wpbr_live_assert(!wpbr_live_contains($expired['body'], $key), 'full key shown for an expired license');
+    $state = wpbr_live_read($live);
+    wpbr_live_assert(($state['licensed'] ?? false) === true, 'expired license made is_licensed() false');
+    wpbr_live_assert(in_array(WPBR_LIVE_BASENAME, is_array($state['active'] ?? null) ? $state['active'] : [], true), 'expired license deactivated the plugin');
+    $feature = trim(wpbr_live_proc([PHP_BINARY, __FILE__, 'ctl-feature', $live])['out']);
+    wpbr_live_assert($feature === 'working', 'expired license broke plugin feature: ' . $feature);
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE expired license keeps the plugin working and is_licensed() true\n";
+
+    FakeServer::setMode('expired');
+    wpbr_live_reset_cache($live);
+    $plugins = wpbr_live_http('http://127.0.0.1:8090/wp-admin/plugins.php', $cookie);
+    wpbr_live_assert($plugins['status'] === 200, 'expired plugins.php status ' . $plugins['status']);
+    wpbr_live_assert(!wpbr_live_contains($plugins['body'], 'There has been a critical error'), 'expired update check fatals');
+    wpbr_live_assert_contains($plugins['body'], 'License:', 'expired plugins row missing');
+    wpbr_live_assert_contains($plugins['body'], 'Expired', 'expired plugins row status missing');
+    wpbr_live_assert_contains($plugins['body'], 'Updates have stopped. The plugin keeps working.', 'expired renew notice missing');
+    $state = wpbr_live_read($live);
+    wpbr_live_assert(($state['transient_version'] ?? 'x') === '', 'expired license still offered a package');
+    $feature = trim(wpbr_live_proc([PHP_BINARY, __FILE__, 'ctl-feature', $live])['out']);
+    wpbr_live_assert($feature === 'working', 'feature broke after expired update-info');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE expired update-info offers no package, plugins.php 200, feature still working\n";
+
+    $langDir = $live . '/wp-content/languages';
+    if (!is_dir($langDir) && !mkdir($langDir, 0777, true) && !is_dir($langDir)) {
+        throw new RuntimeException('Could not create the live languages directory.');
+    }
+    if (!copy(dirname(__DIR__) . '/languages/wpbr-updater-zh_TW.mo', $langDir . '/zh_TW.mo')) {
+        throw new RuntimeException('Could not install the zh_TW locale.');
+    }
+    $lang = wpbr_live_proc([PHP_BINARY, __FILE__, 'ctl-lang', $live, 'zh_TW']);
+    wpbr_live_assert($lang['code'] === 0, $lang['out']);
+    $state = wpbr_live_read($live);
+    wpbr_live_assert(($state['locale'] ?? '') === 'zh_TW', 'locale stayed ' . (string) ($state['locale'] ?? ''));
+    $zh = wpbr_live_http($page, $cookie);
+    wpbr_live_assert($zh['status'] === 200, 'zh_TW license screen status ' . $zh['status']);
+    wpbr_live_assert_contains($zh['body'], '授權金鑰', 'zh_TW key label missing');
+    wpbr_live_assert_contains($zh['body'], '已過期', 'zh_TW expired status missing');
+    wpbr_live_assert_contains($zh['body'], '外掛仍可繼續使用', 'zh_TW keep-working copy missing');
+    wpbr_live_assert_contains($zh['body'], '停用', 'zh_TW deactivate missing');
+    $zhPlugins = wpbr_live_http('http://127.0.0.1:8090/wp-admin/plugins.php', $cookie);
+    wpbr_live_assert($zhPlugins['status'] === 200, 'zh_TW plugins.php status ' . $zhPlugins['status']);
+    wpbr_live_assert_contains($zhPlugins['body'], '授權：已過期', 'zh_TW plugins row missing');
+    wpbr_live_assert_contains($zhPlugins['body'], '外掛仍可繼續使用', 'zh_TW plugins notice missing');
+    wpbr_live_assert_log_empty($log);
+    echo "EVIDENCE zh_TW license screen and plugins row use the catalog\n";
+}
+
+/**
+ * @return array{status: int, body: string}
+ */
+function wpbr_live_license_post(string $url, string $cookie, string $html, string $action, string $key = ''): array
+{
+    $fields = [
+        'action' => 'wpbr_license_wpbr-dummy',
+        'wpbr_license_do' => $action,
+        'wpbr_license_nonce' => wpbr_live_nonce($html),
+    ];
+    if ($key !== '') {
+        $fields['license_key'] = $key;
+    }
+
+    return wpbr_live_post($url, $cookie, $fields);
+}
+
+function wpbr_live_nonce(string $html): string
+{
+    if (!preg_match('/name="wpbr_license_nonce" value="([a-zA-Z0-9]+)"/', $html, $match)) {
+        throw new RuntimeException('License nonce missing.');
+    }
+
+    return $match[1];
+}
+
+/**
+ * @param array<string, string> $fields
+ * @return array{status: int, body: string}
+ */
+function wpbr_live_post(string $url, string $cookie, array $fields, int $maxTime = 30): array
+{
+    $bodyFile = tempnam(sys_get_temp_dir(), 'wpbr-body');
+    if ($bodyFile === false) {
+        throw new RuntimeException('tempnam failed');
+    }
+    $command = sprintf(
+        'curl -sS -L --max-redirs 5 --max-time %d -o %s -w %%{http_code} -b %s',
+        $maxTime,
+        escapeshellarg($bodyFile),
+        escapeshellarg($cookie)
+    );
+    foreach ($fields as $name => $value) {
+        $command .= ' --data-urlencode ' . escapeshellarg($name . '=' . $value);
+    }
+    $command .= ' ' . escapeshellarg($url);
+    $status = (int) shell_exec($command);
+    $body = (string) file_get_contents($bodyFile);
+    unlink($bodyFile);
+
+    return ['status' => $status, 'body' => $body];
+}
+
+function wpbr_live_assert_contains(string $haystack, string $needle, string $message): void
+{
+    if (wpbr_live_contains($haystack, $needle)) {
+        return;
+    }
+    $excerpt = preg_replace('/\s+/', ' ', $haystack);
+    if (!is_string($excerpt)) {
+        $excerpt = $haystack;
+    }
+    throw new RuntimeException($message . ' excerpt=' . substr($excerpt, 0, 500));
 }

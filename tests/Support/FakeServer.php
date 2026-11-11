@@ -136,14 +136,46 @@ final class FakeServer
             'release_id' => 42,
             'domain' => '127.0.0.1',
             'sleep' => 30,
+            'license_key' => 'WPBR-TEST-KEY-0123456789ABCD',
+            'instance_token' => '0123456789abcdef0123456789abcdef',
+            'license_status' => 'active',
+            'sites_used' => 1,
+            'sites_limit' => 3,
             'hits' => [
                 'update-info' => 0,
                 'info' => 0,
                 'download' => 0,
+                'activate' => 0,
+                'deactivate' => 0,
+                'check' => 0,
                 'other' => 0,
             ],
             'last_update_body' => '',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    public static function merge(array $extra): void
+    {
+        $state = self::read();
+        foreach ($extra as $key => $value) {
+            $state[$key] = $value;
+        }
+        self::write($state);
+    }
+
+    public static function lastBody(string $bucket): string
+    {
+        $body = self::read()['last_' . $bucket . '_body'] ?? '';
+        return is_string($body) ? $body : '';
+    }
+
+    public static function lastUri(): string
+    {
+        $uri = self::read()['last_uri'] ?? '';
+        return is_string($uri) ? $uri : '';
     }
 
     public static function buildZip(string $version = '1.2.0'): string

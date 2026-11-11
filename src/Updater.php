@@ -23,12 +23,14 @@ use WP_Error;
  * `license_option` is an array with `instance_token` (the token from
  * POST /activate). Without a token the plugin is still listed in `no_update`,
  * so the auto-update toggle is available, and no package is offered.
+ * The same option stores the license summary. It is saved with autoload off.
+ * An expired license stops updates only. The plugin keeps working.
  *
  * @license GPL-3.0-or-later
  */
 final class Updater
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.2.0';
 
     private const API_TIMEOUT = 5;
 
@@ -42,6 +44,8 @@ final class Updater
     private static array $registered = [];
 
     private string $slug;
+
+    private string $file;
 
     private string $basename;
 
@@ -68,6 +72,34 @@ final class Updater
 
         self::$registered[$updater->slug] = true;
         $updater->hooks();
+    }
+
+    /**
+     * True when this site holds an activation that has not been revoked.
+     *
+     * Expired is still licensed. Expiry stops updates, not the plugin.
+     */
+    public static function is_licensed(string $slug): bool
+    {
+        try {
+            return License::isLicensed($slug);
+        } catch (Throwable $exception) {
+            return false;
+        }
+    }
+
+    /**
+     * UTC expiry from the stored license summary.
+     *
+     * Null means a lifetime license, or that no expiry is stored.
+     */
+    public static function expires_at(string $slug): ?string
+    {
+        try {
+            return License::expiresAt($slug);
+        } catch (Throwable $exception) {
+            return null;
+        }
     }
 
     /**
@@ -106,6 +138,7 @@ final class Updater
         }
 
         $this->slug = $slug;
+        $this->file = $config['file'];
         $this->basename = plugin_basename($config['file']);
         $this->server = $server;
         $this->version = $version;
@@ -117,6 +150,18 @@ final class Updater
         add_filter('pre_set_site_transient_update_plugins', [$this, 'filterTransient']);
         add_filter('plugins_api', [$this, 'pluginsApi'], 10, 3);
         add_filter('upgrader_pre_download', [$this, 'guardDownload'], 10, 4);
+        try {
+            License::attach([
+                'slug' => $this->slug,
+                'file' => $this->file,
+                'basename' => $this->basename,
+                'server' => $this->server,
+                'version' => $this->version,
+                'license_option' => $this->licenseOption,
+            ]);
+        } catch (Throwable $exception) {
+            return;
+        }
     }
 
     /**
@@ -284,6 +329,7 @@ final class Updater
 
         $json = $result['json'];
         if ($result['status'] === 403 && is_array($json) && ($json['code'] ?? null) === 'license_expired') {
+            License::markExpired($this->licenseOption);
             $data = ['update_available' => false];
             $this->writeSlot('update', false, $data, self::CACHE_TTL);
             return $data;
@@ -298,6 +344,11 @@ final class Updater
         if ($parsed === null) {
             $this->writeSlot('update', true, null, self::BACKOFF_TTL);
             return null;
+        }
+
+        $license = $json['license'] ?? null;
+        if (is_array($license)) {
+            License::remember($this->licenseOption, $license);
         }
 
         $this->writeSlot('update', false, $parsed, self::CACHE_TTL);

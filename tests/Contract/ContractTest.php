@@ -127,6 +127,58 @@ final class ContractTest extends TestCase
         $this->assertSame('7.1.4', $json['tested']);
     }
 
+    public function test_activate_deactivate_and_check_match_the_schema(): void
+    {
+        FakeServer::setMode('update');
+        $activate = $this->call(
+            'POST',
+            '/wp-json/wpbr-license/v1/activate',
+            (string) json_encode([
+                'license_key' => 'WPBR-TEST-KEY-0123456789ABCD',
+                'product_slug' => 'wpbr-dummy',
+                'domain' => 'https://Example.com/path',
+                'version' => '1.0.0',
+                'wp' => '7.1.4',
+                'php' => '7.4.33',
+            ])
+        );
+        $this->assertSame(200, $activate['status']);
+        SchemaAssert::assertValid($activate['body'], 'https://wpbrewer.com/schema/wpbr-license/v1/activate.response.json');
+        $this->assertStringNotContainsString('license_key', $activate['body']);
+
+        $check = $this->call(
+            'POST',
+            '/wp-json/wpbr-license/v1/check',
+            '{"instance_token":"0123456789abcdef0123456789abcdef","domain":"example.com","product_slug":"wpbr-dummy","version":"1.0.0"}'
+        );
+        $this->assertSame(200, $check['status']);
+        SchemaAssert::assertValid($check['body'], 'https://wpbrewer.com/schema/wpbr-license/v1/check.response.json');
+
+        $deactivate = $this->call(
+            'POST',
+            '/wp-json/wpbr-license/v1/deactivate',
+            '{"instance_token":"0123456789abcdef0123456789abcdef","domain":"example.com","product_slug":"wpbr-dummy"}'
+        );
+        $this->assertSame(200, $deactivate['status']);
+        SchemaAssert::assertValid($deactivate['body'], 'https://wpbrewer.com/schema/wpbr-license/v1/deactivate.response.json');
+
+        $wrong = $this->call(
+            'POST',
+            '/wp-json/wpbr-license/v1/activate',
+            (string) json_encode([
+                'license_key' => 'wrong-key',
+                'product_slug' => 'wpbr-dummy',
+                'domain' => 'example.com',
+                'version' => '1.0.0',
+                'wp' => '7.1.4',
+                'php' => '7.4.33',
+            ])
+        );
+        $this->assertSame(404, $wrong['status']);
+        SchemaAssert::assertValid($wrong['body'], self::ERROR);
+        $this->assertStringContainsString('license_not_found', $wrong['body']);
+    }
+
     public function test_download_is_a_zip(): void
     {
         FakeServer::setMode('update');
