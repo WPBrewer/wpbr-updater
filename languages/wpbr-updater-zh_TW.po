@@ -1,0 +1,171 @@
+# Translation of wpbr-updater in Chinese (Taiwan).
+# This file is distributed under the same license as the wpbr-updater package.
+msgid ""
+msgstr ""
+"Project-Id-Version: wpbr-updater 0.2.0\n"
+"Report-Msgid-Bugs-To: https://github.com/WPBrewer/wpbr-updater\n"
+"POT-Creation-Date: 2026-11-11 09:31+0000\n"
+"PO-Revision-Date: 2026-11-11 09:26+0000\n"
+"Last-Translator: WPBrewer\n"
+"Language-Team: Chinese (Taiwan)\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: src/License.php:201 src/License.php:206 src/License.php:312
+#, php-format
+msgid "%s license"
+msgstr "%s 授權"
+
+#: src/License.php:218 src/License.php:305
+msgid "You are not allowed to manage this license."
+msgstr "你沒有管理這個授權的權限。"
+
+#: src/License.php:259
+#, php-format
+msgid ""
+"The license for %s has expired. Updates have stopped. The plugin keeps "
+"working."
+msgstr "%s 的授權已過期。更新已停止。外掛仍可繼續使用。"
+
+#: src/License.php:265
+#, php-format
+msgid ""
+"The license for %1$s expires on %2$s. Updates stop after it expires. The "
+"plugin keeps working."
+msgstr "%1$s 的授權將於 %2$s 到期。到期後更新會停止。外掛仍可繼續使用。"
+
+#: src/License.php:273
+msgid "Manage license"
+msgstr "管理授權"
+
+#: src/License.php:290
+#, php-format
+msgid "License: %s"
+msgstr "授權：%s"
+
+#: src/License.php:324 src/License.php:888
+msgid "License key"
+msgstr "授權金鑰"
+
+#: src/License.php:325
+msgid "Status"
+msgstr "狀態"
+
+#: src/License.php:326
+msgid "Expires"
+msgstr "到期日"
+
+#: src/License.php:327
+msgid "Sites used"
+msgstr "已使用網站"
+
+#: src/License.php:329
+msgid "Deactivate"
+msgstr "停用"
+
+#: src/License.php:330
+msgid "Check status"
+msgstr "檢查狀態"
+
+#: src/License.php:338
+msgid "Enter a license key."
+msgstr "請輸入授權金鑰。"
+
+#: src/License.php:370
+msgid "License activated."
+msgstr "授權已啟用。"
+
+#: src/License.php:385 src/License.php:423
+msgid "This site is not activated."
+msgstr "這個網站尚未啟用授權。"
+
+#: src/License.php:408
+msgid "License deactivated."
+msgstr "授權已停用。"
+
+#: src/License.php:449
+msgid "License status updated."
+msgstr "授權狀態已更新。"
+
+#: src/License.php:553
+msgid "License key not found."
+msgstr "找不到授權金鑰。"
+
+#: src/License.php:555
+msgid ""
+"This license has expired. Updates have stopped. The plugin keeps working."
+msgstr "這個授權已過期。更新已停止。外掛仍可繼續使用。"
+
+#: src/License.php:557
+msgid "This license has been revoked."
+msgstr "這個授權已撤銷。"
+
+#: src/License.php:559
+msgid "This license has no sites left."
+msgstr "這個授權沒有剩餘的網站名額。"
+
+#: src/License.php:561
+msgid "This activation does not match this site."
+msgstr "這個啟用紀錄與這個網站不符。"
+
+#: src/License.php:563
+msgid "This activation is no longer valid."
+msgstr "這個啟用紀錄已失效。"
+
+#: src/License.php:567
+#, php-format
+msgid "Too many requests. Try again in %d seconds."
+msgstr "要求過於頻繁。請於 %d 秒後再試。"
+
+#: src/License.php:779
+msgid "Not activated"
+msgstr "尚未啟用"
+
+#: src/License.php:782
+msgid "Revoked"
+msgstr "已撤銷"
+
+#: src/License.php:787
+msgid "Expired"
+msgstr "已過期"
+
+#: src/License.php:790
+msgid "Expires soon"
+msgstr "即將到期"
+
+#: src/License.php:793
+msgid "Active"
+msgstr "已啟用"
+
+#: src/License.php:799
+msgid "Activated on this site"
+msgstr "已在這個網站啟用"
+
+#: src/License.php:808
+msgid "Does not expire"
+msgstr "不會到期"
+
+#: src/License.php:829
+#, php-format
+msgid "%d / unlimited"
+msgstr "%d / 無限制"
+
+#: src/License.php:836
+#, php-format
+msgid "%1$d / %2$d"
+msgstr "%1$d / %2$d"
+
+#: src/License.php:891
+msgid "Activate"
+msgstr "啟用"
+
+#: src/License.php:947
+msgid "The license server could not be reached. The plugin keeps working."
+msgstr "無法連線到授權伺服器。外掛仍可繼續使用。"
+
+#: src/License.php:952
+msgid "The license server rejected the request. The plugin keeps working."
+msgstr "授權伺服器拒絕了這次要求。外掛仍可繼續使用。"

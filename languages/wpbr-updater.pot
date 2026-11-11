@@ -1,0 +1,174 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the wpbr-updater package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: wpbr-updater 0.2.0\n"
+"Report-Msgid-Bugs-To: https://github.com/WPBrewer/wpbr-updater\n"
+"POT-Creation-Date: 2026-11-11 09:31+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/License.php:201 src/License.php:206 src/License.php:312
+#, php-format
+msgid "%s license"
+msgstr ""
+
+#: src/License.php:218 src/License.php:305
+msgid "You are not allowed to manage this license."
+msgstr ""
+
+#: src/License.php:259
+#, php-format
+msgid ""
+"The license for %s has expired. Updates have stopped. The plugin keeps "
+"working."
+msgstr ""
+
+#: src/License.php:265
+#, php-format
+msgid ""
+"The license for %1$s expires on %2$s. Updates stop after it expires. The "
+"plugin keeps working."
+msgstr ""
+
+#: src/License.php:273
+msgid "Manage license"
+msgstr ""
+
+#: src/License.php:290
+#, php-format
+msgid "License: %s"
+msgstr ""
+
+#: src/License.php:324 src/License.php:888
+msgid "License key"
+msgstr ""
+
+#: src/License.php:325
+msgid "Status"
+msgstr ""
+
+#: src/License.php:326
+msgid "Expires"
+msgstr ""
+
+#: src/License.php:327
+msgid "Sites used"
+msgstr ""
+
+#: src/License.php:329
+msgid "Deactivate"
+msgstr ""
+
+#: src/License.php:330
+msgid "Check status"
+msgstr ""
+
+#: src/License.php:338
+msgid "Enter a license key."
+msgstr ""
+
+#: src/License.php:370
+msgid "License activated."
+msgstr ""
+
+#: src/License.php:385 src/License.php:423
+msgid "This site is not activated."
+msgstr ""
+
+#: src/License.php:408
+msgid "License deactivated."
+msgstr ""
+
+#: src/License.php:449
+msgid "License status updated."
+msgstr ""
+
+#: src/License.php:553
+msgid "License key not found."
+msgstr ""
+
+#: src/License.php:555
+msgid ""
+"This license has expired. Updates have stopped. The plugin keeps working."
+msgstr ""
+
+#: src/License.php:557
+msgid "This license has been revoked."
+msgstr ""
+
+#: src/License.php:559
+msgid "This license has no sites left."
+msgstr ""
+
+#: src/License.php:561
+msgid "This activation does not match this site."
+msgstr ""
+
+#: src/License.php:563
+msgid "This activation is no longer valid."
+msgstr ""
+
+#: src/License.php:567
+#, php-format
+msgid "Too many requests. Try again in %d seconds."
+msgstr ""
+
+#: src/License.php:779
+msgid "Not activated"
+msgstr ""
+
+#: src/License.php:782
+msgid "Revoked"
+msgstr ""
+
+#: src/License.php:787
+msgid "Expired"
+msgstr ""
+
+#: src/License.php:790
+msgid "Expires soon"
+msgstr ""
+
+#: src/License.php:793
+msgid "Active"
+msgstr ""
+
+#: src/License.php:799
+msgid "Activated on this site"
+msgstr ""
+
+#: src/License.php:808
+msgid "Does not expire"
+msgstr ""
+
+#: src/License.php:829
+#, php-format
+msgid "%d / unlimited"
+msgstr ""
+
+#: src/License.php:836
+#, php-format
+msgid "%1$d / %2$d"
+msgstr ""
+
+#: src/License.php:891
+msgid "Activate"
+msgstr ""
+
+#: src/License.php:947
+msgid "The license server could not be reached. The plugin keeps working."
+msgstr ""
+
+#: src/License.php:952
+msgid "The license server rejected the request. The plugin keeps working."
+msgstr ""
