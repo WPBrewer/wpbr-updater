@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/activate.response.json",
+    "title": "POST /activate response",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["instance_token", "license"],
+    "properties": {
+        "instance_token": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Plaintext token, returned once per activation. Later calls send it back in the body. The server stores only SHA-256."
+        },
+        "license": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/license-summary.schema.json"
+        }
+    }
+}

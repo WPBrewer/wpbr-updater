@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/error.response.json",
+    "title": "Error",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["code", "message", "data"],
+    "properties": {
+        "code": {
+            "type": "string",
+            "enum": [
+                "license_not_found",
+                "license_expired",
+                "license_revoked",
+                "limit_reached",
+                "domain_mismatch",
+                "invalid_token",
+                "rate_limited",
+                "release_not_found",
+                "server_error",
+                "invalid_request",
+                "unauthorized",
+                "forbidden"
+            ]
+        },
+        "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human text. Clients switch on code."
+        },
+        "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status"],
+            "properties": {
+                "status": {
+                    "type": "integer",
+                    "minimum": 400,
+                    "maximum": 599
+                },
+                "retry_after": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Present on rate_limited. Same value as the Retry-After header, in seconds."
+                }
+            }
+        }
+    }
+}

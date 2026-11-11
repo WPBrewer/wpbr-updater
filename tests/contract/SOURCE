@@ -1,0 +1,10 @@
+Vendored JSON Schemas for wpbr-license/v1.
+
+Source repository: WPBrewer/wpbr-license-server (private)
+Source commit: da084ce
+Source path: contract/schema/
+Vendored path: tests/contract/schema/
+Contents: schemas only. contract/api-v1.md from that commit is not included.
+
+The schemas are normative. $id and $ref use https://wpbrewer.com/schema/wpbr-license/v1/.
+Snapshot taken 2026-11-11 from the archive attached to WPB-369.

@@ -1,0 +1,13 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/deactivate.response.json",
+    "title": "POST /deactivate response",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["ok"],
+    "properties": {
+        "ok": {
+            "const": true
+        }
+    }
+}

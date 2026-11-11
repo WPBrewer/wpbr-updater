@@ -1,0 +1,9 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/slug.schema.json",
+    "title": "Product slug",
+    "type": "string",
+    "minLength": 1,
+    "maxLength": 191,
+    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+}

@@ -1,0 +1,73 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/update-info.response.json",
+    "title": "POST /update-info response",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["update_available", "license"],
+    "properties": {
+        "update_available": {
+            "type": "boolean"
+        },
+        "version": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "package": {
+            "type": "string",
+            "pattern": "^https?://[A-Za-z0-9._~:-]+(?:/[A-Za-z0-9._~-]*)*/wpbr-download/[1-9][0-9]*\\?exp=[1-9][0-9]*&dom=[a-z0-9.-]+&sig=[a-f0-9]{64}$",
+            "description": "Signed download URL. Present only when update_available is true. No license key, email, or token."
+        },
+        "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "requires_wp": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "requires_php": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "tested": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json",
+            "description": "Release column tested_wp."
+        },
+        "changelog": {
+            "type": "string",
+            "maxLength": 100000
+        },
+        "allow_downgrade": {
+            "type": "boolean",
+            "description": "True when the offered version is older than the client version. Present only with a package."
+        },
+        "license": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/license-summary.schema.json"
+        }
+    },
+    "allOf": [
+        {
+            "if": {
+                "required": ["update_available"],
+                "properties": {
+                    "update_available": { "const": true }
+                }
+            },
+            "then": {
+                "required": ["version", "package", "sha256", "requires_wp", "requires_php", "tested", "changelog", "allow_downgrade", "license"]
+            }
+        },
+        {
+            "if": {
+                "required": ["update_available"],
+                "properties": {
+                    "update_available": { "const": false }
+                }
+            },
+            "then": {
+                "properties": {
+                    "package": false,
+                    "sha256": false
+                }
+            }
+        }
+    ]
+}

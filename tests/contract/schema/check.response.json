@@ -1,0 +1,7 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/check.response.json",
+    "title": "POST /check response",
+    "description": "The body is the license summary.",
+    "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/license-summary.schema.json"
+}

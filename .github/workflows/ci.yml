@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.4']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      WP_TEST_DB_NAME: wordpress_test
+      WP_TEST_DB_USER: root
+      WP_TEST_DB_PASS: root
+      WP_TEST_DB_HOST: 127.0.0.1
+      WP_CORE_DIR: /tmp/wpbr-wp-core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, dom, intl, mbstring, mysqli, xml, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Composer install
+        run: composer install --no-interaction --prefer-dist
+
+      - name: php -l
+        run: find src tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: WordPress test library
+        run: bash tests/install-wp-tests.sh
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit --colors=never
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
