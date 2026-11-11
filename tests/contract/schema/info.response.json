@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/info.response.json",
+    "title": "GET /info/{slug} response",
+    "description": "Public product info. Never includes a package URL, checksum, license key, or token.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["slug", "name", "version", "changelog", "requires_wp", "requires_php", "tested"],
+    "properties": {
+        "slug": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/slug.schema.json"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+        },
+        "version": {
+            "description": "Latest published stable version, or null when no release is published.",
+            "anyOf": [
+                { "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json" },
+                { "type": "null" }
+            ]
+        },
+        "changelog": {
+            "type": "string",
+            "maxLength": 100000
+        },
+        "requires_wp": {
+            "anyOf": [
+                { "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json" },
+                { "type": "null" }
+            ]
+        },
+        "requires_php": {
+            "anyOf": [
+                { "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json" },
+                { "type": "null" }
+            ]
+        },
+        "tested": {
+            "anyOf": [
+                { "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json" },
+                { "type": "null" }
+            ]
+        }
+    }
+}

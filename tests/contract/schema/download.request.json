@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/download.request.json",
+    "title": "GET /wpbr-download/{release_id} query",
+    "description": "Query parameters after decoding. release_id is the path segment. No license key, email, or instance token.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["release_id", "exp", "dom", "sig"],
+    "properties": {
+        "release_id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "exp": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Unix expiry. URLs are minted for 900 seconds."
+        },
+        "dom": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253,
+            "pattern": "^[a-z0-9.-]+$",
+            "description": "Normalized domain."
+        },
+        "sig": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Lowercase hex HMAC-SHA256."
+        }
+    }
+}

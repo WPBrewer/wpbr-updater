@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/license-summary.schema.json",
+    "title": "License summary",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["status", "expires_at", "sites_used", "sites_limit"],
+    "properties": {
+        "status": {
+            "type": "string",
+            "enum": ["active", "expired", "revoked"],
+            "description": "Effective status. Expired wins once expires_at is in the past, even if the row has not been flipped yet. Revoked wins over expiry."
+        },
+        "expires_at": {
+            "description": "UTC instant, or null for a lifetime license.",
+            "anyOf": [
+                {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sites_used": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "sites_limit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 means unlimited."
+        }
+    }
+}

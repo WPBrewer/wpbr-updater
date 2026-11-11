@@ -1,0 +1,39 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/releases.request.json",
+    "title": "POST /releases metadata",
+    "description": "JSON metadata sent with the zip. The multipart part name is metadata.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["product_slug", "version", "changelog", "requires_wp", "requires_php", "tested_wp", "sha256"],
+    "properties": {
+        "product_slug": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/slug.schema.json"
+        },
+        "version": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "channel": {
+            "const": "stable",
+            "description": "Optional. v1 accepts only stable. Omitted means stable."
+        },
+        "changelog": {
+            "type": "string",
+            "maxLength": 100000
+        },
+        "requires_wp": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "requires_php": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "tested_wp": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "Lowercase hex of the zip bytes. The server recomputes it and rejects a mismatch."
+        }
+    }
+}

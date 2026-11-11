@@ -1,0 +1,7 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/update-info.request.json",
+    "title": "POST /update-info request",
+    "description": "Same body as POST /check.",
+    "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/check.request.json"
+}

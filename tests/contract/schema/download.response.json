@@ -1,0 +1,9 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/download.response.json",
+    "title": "GET /wpbr-download/{release_id} success body",
+    "description": "The HTTP success body is the raw zip (Content-Type application/zip), not a JSON document. Failures use error.response.json.",
+    "type": "string",
+    "contentEncoding": "binary",
+    "contentMediaType": "application/zip"
+}

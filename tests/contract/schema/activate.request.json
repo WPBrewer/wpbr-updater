@@ -1,0 +1,35 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wpbrewer.com/schema/wpbr-license/v1/activate.request.json",
+    "title": "POST /activate request",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["license_key", "product_slug", "domain", "version", "wp", "php"],
+    "properties": {
+        "license_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "^\\S+$",
+            "description": "Plaintext key. Never put this in a URL."
+        },
+        "product_slug": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/slug.schema.json"
+        },
+        "domain": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "Raw site URL or host. The server normalizes it before comparing."
+        },
+        "version": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "wp": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        },
+        "php": {
+            "$ref": "https://wpbrewer.com/schema/wpbr-license/v1/version.schema.json"
+        }
+    }
+}
