@@ -2,11 +2,11 @@
 
 Update client for one WordPress plugin. PHP >= 7.4. GPL-3.0-or-later.
 
-`Updater::VERSION` is `1.0.0`. Composer installs this package from the git tag. There is no Packagist release.
+`Updater::VERSION` is `1.0.1`. Composer installs this package from the git tag. There is no Packagist release.
 
 ## Install
 
-After `v1.0.0` is tagged on the merge commit:
+After `v1.0.1` is tagged on the merge commit:
 
 ```json
 {
@@ -27,14 +27,17 @@ After `v1.0.0` is tagged on the merge commit:
 
 Each plugin vendors its own prefixed copy. Two plugins can ship different updater versions. The classes do not collide.
 
-`examples/wpbr-updater-demo` is that plugin. Copy its `composer.json` into the plugin. The path repository there points at this checkout, with Composer's `versions` option set to `1.0.0`, so the example builds before the tag exists. A published plugin replaces the path repository with the VCS repository above.
+`examples/wpbr-updater-demo` is that plugin. Copy its `composer.json` into the plugin. The path repository there points at this checkout, with Composer's `versions` option set to `1.0.1`, so the example builds before the tag exists. A published plugin replaces the path repository with the VCS repository above.
 
-`brianhenryie/strauss` 0.31.1 still installs on PHP 7.4 only if Composer is allowed to use `league/flysystem` 2.5.0. Composer blocks that release (`CVE-2026-102601`, fixed in 3.35.3, which needs PHP 8). Flysystem is a Strauss dependency. It is not part of the prefixed updater. Pass `--no-security-blocking` when installing Strauss on PHP 7.4:
+Run Strauss on PHP 8.1 or newer. The updater it writes under `vendor-prefixed/` still runs on PHP 7.4. Strauss is a build tool. Install it from `tools/strauss`, not from the plugin `require`. Its dependencies stay out of the plugin and out of `vendor-prefixed/`. On PHP 8.1+ that install resolves `league/flysystem` 3.36.0 (`CVE-2026-102601` is fixed in 3.35.3). Leave Composer's security blocking on.
 
 ```bash
-composer update --no-security-blocking
-php -d memory_limit=1G vendor/bin/strauss
+composer update --working-dir=tools/strauss
+composer update --working-dir=examples/wpbr-updater-demo
+composer --working-dir=examples/wpbr-updater-demo prefix
 ```
+
+`composer prefix` runs `tools/strauss/strauss.php` with the PHP that is running Composer. The demo keeps `"platform": {"php": "7.4.33"}` so the plugin resolve stays on the runtime you ship. `composer audit` for this package and for `tools/strauss` reports no advisories.
 
 ```json
 "extra": {
@@ -53,7 +56,9 @@ php -d memory_limit=1G vendor/bin/strauss
         "exclude_from_copy": {
             "file_patterns": [
                 "#/tests/#",
-                "#/\\.github/#"
+                "#/\\.github/#",
+                "#/tools/#",
+                "#/vendor/#"
             ]
         },
         "parallel": false
@@ -81,6 +86,6 @@ Updater::register([
 
 ## Coexistence
 
-`php tests/coexist-run.php` builds two plugins with Strauss. One vendors this tree (`1.0.0`, prefix `WpbrDemoOne`). The other vendors commit `0f9c2f4` (`0.2.0`, prefix `WpbrDemoTwo`). It activates both on one WordPress site and checks the update transient for both against the stub server.
+`php tests/coexist-run.php build` on PHP 8.1+ installs `tools/strauss` and builds two plugins. One vendors this tree (`1.0.1`, prefix `WpbrDemoOne`). The other vendors commit `0f9c2f4` (`0.2.0`, prefix `WpbrDemoTwo`). `php tests/coexist-run.php exec` activates both on one WordPress site and checks the update transient for both against the stub server. CI builds on PHP 8.3 and runs `exec` on PHP 7.4. `php tests/coexist-run.php` does both on the current PHP, which must be 8.1+.
 
-Needs `composer install` and `bash tests/install-wp-tests.sh` first. Database credentials are `WP_TEST_DB_USER`, `WP_TEST_DB_PASS`, and `WP_TEST_DB_HOST` (defaults `wp` / `wp` / `127.0.0.1`).
+`exec` needs `composer install` and `bash tests/install-wp-tests.sh` first. Database credentials are `WP_TEST_DB_USER`, `WP_TEST_DB_PASS`, and `WP_TEST_DB_HOST` (defaults `wp` / `wp` / `127.0.0.1`).
