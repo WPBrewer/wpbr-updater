@@ -30,7 +30,7 @@ use WP_Error;
  */
 final class Updater
 {
-    public const VERSION = '0.2.0';
+    public const VERSION = '1.0.0';
 
     private const API_TIMEOUT = 5;
 

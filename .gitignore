@@ -1,3 +1,6 @@
 /vendor/
 /.phpunit.cache/
 .phpunit.result.cache
+/examples/wpbr-updater-demo/vendor/
+/examples/wpbr-updater-demo/vendor-prefixed/
+/examples/wpbr-updater-demo/composer.lock
