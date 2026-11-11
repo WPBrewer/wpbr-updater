@@ -1,0 +1,57 @@
+{
+    "name": "wpbrewer/wpbr-updater-demo",
+    "description": "Demo plugin. One Updater::register() call, Strauss-prefixed wpbr-updater.",
+    "type": "wordpress-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=7.4",
+        "wpbrewer/wpbr-updater": "^1.0.0"
+    },
+    "require-dev": {
+        "brianhenryie/strauss": "^0.31.1"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../..",
+            "options": {
+                "symlink": false,
+                "versions": {
+                    "wpbrewer/wpbr-updater": "1.0.0"
+                }
+            }
+        }
+    ],
+    "extra": {
+        "strauss": {
+            "target_directory": "vendor-prefixed",
+            "namespace_prefix": "WpbrDemo\\",
+            "classmap_prefix": "WpbrDemo_",
+            "constant_prefix": "WPBR_DEMO_",
+            "packages": [
+                "wpbrewer/wpbr-updater"
+            ],
+            "update_call_sites": [
+                "wpbr-updater-demo.php"
+            ],
+            "delete_vendor_packages": true,
+            "exclude_from_copy": {
+                "file_patterns": [
+                    "#/tests/#",
+                    "#/\\.github/#"
+                ]
+            },
+            "parallel": false
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "7.4.33"
+        },
+        "allow-plugins": true
+    },
+    "scripts": {
+        "prefix": "@php -d memory_limit=1G vendor/bin/strauss"
+    }
+}
