@@ -19,7 +19,7 @@ const WPBR_LIVE_BASENAME = 'wpbr-dummy/wpbr-dummy.php';
 const WPBR_LIVE_CACHE = 'wpbr_updater_wpbr-dummy';
 
 $command = $argv[1] ?? 'run';
-if (str_starts_with($command, 'ctl-')) {
+if (substr($command, 0, 4) === 'ctl-') {
     wpbr_live_ctl($command);
     exit(0);
 }
@@ -92,15 +92,15 @@ function wpbr_live_run(): void
 
     $plugins = wpbr_live_http('http://127.0.0.1:8090/wp-admin/plugins.php', $cookie);
     wpbr_live_assert($plugins['status'] === 200, 'plugins.php status ' . $plugins['status']);
-    wpbr_live_assert(str_contains($plugins['body'], 'Enable auto-updates'), 'auto-update toggle missing');
-    wpbr_live_assert(str_contains($plugins['body'], 'wpbr-dummy'), 'plugin row missing');
-    wpbr_live_assert(str_contains($plugins['body'], 'View details'), 'details link missing');
-    wpbr_live_assert(!str_contains($plugins['body'], 'name="log"'), 'plugins.php showed the login form');
+    wpbr_live_assert(wpbr_live_contains($plugins['body'], 'Enable auto-updates'), 'auto-update toggle missing');
+    wpbr_live_assert(wpbr_live_contains($plugins['body'], 'wpbr-dummy'), 'plugin row missing');
+    wpbr_live_assert(wpbr_live_contains($plugins['body'], 'View details'), 'details link missing');
+    wpbr_live_assert(!wpbr_live_contains($plugins['body'], 'name="log"'), 'plugins.php showed the login form');
     wpbr_live_assert_log_empty($log);
 
     $state = wpbr_live_read($live);
     wpbr_live_assert(($state['transient_version'] ?? '') === '1.2.0', 'transient did not offer 1.2.0');
-    wpbr_live_assert(str_contains((string) ($state['package'] ?? ''), '127.0.0.1:8080/wpbr-download/'), 'package URL missing');
+    wpbr_live_assert(wpbr_live_contains((string) ($state['package'] ?? ''), '127.0.0.1:8080/wpbr-download/'), 'package URL missing');
     echo "EVIDENCE transient new_version=1.2.0 package={$state['package']}\n";
     echo "EVIDENCE plugins.php 200 contains Enable auto-updates and View details\n";
 
@@ -110,7 +110,7 @@ function wpbr_live_run(): void
     $toggle = 'http://127.0.0.1:8090/wp-admin/' . html_entity_decode($match[1], ENT_QUOTES);
     $enabled = wpbr_live_http($toggle, $cookie);
     wpbr_live_assert($enabled['status'] === 200, 'enable auto-update status ' . $enabled['status']);
-    wpbr_live_assert(str_contains($enabled['body'], 'Disable auto-updates'), 'toggle did not switch');
+    wpbr_live_assert(wpbr_live_contains($enabled['body'], 'Disable auto-updates'), 'toggle did not switch');
     $state = wpbr_live_read($live);
     $auto = $state['auto'] ?? [];
     wpbr_live_assert(is_array($auto) && in_array(WPBR_LIVE_BASENAME, $auto, true), 'auto_update_plugins missing the plugin');
@@ -122,11 +122,11 @@ function wpbr_live_run(): void
         $cookie
     );
     wpbr_live_assert($modal['status'] === 200, 'details modal status ' . $modal['status']);
-    wpbr_live_assert(str_contains($modal['body'], 'Fix renewal invoice'), 'changelog missing');
-    wpbr_live_assert(str_contains($modal['body'], 'Requires WordPress Version:'), 'requires label missing');
-    wpbr_live_assert(str_contains($modal['body'], '7.0 or higher'), 'requires value missing');
-    wpbr_live_assert(str_contains($modal['body'], 'Compatible up to:'), 'tested label missing');
-    wpbr_live_assert(str_contains($modal['body'], '7.1.4'), 'tested value missing');
+    wpbr_live_assert(wpbr_live_contains($modal['body'], 'Fix renewal invoice'), 'changelog missing');
+    wpbr_live_assert(wpbr_live_contains($modal['body'], 'Requires WordPress Version:'), 'requires label missing');
+    wpbr_live_assert(wpbr_live_contains($modal['body'], '7.0 or higher'), 'requires value missing');
+    wpbr_live_assert(wpbr_live_contains($modal['body'], 'Compatible up to:'), 'tested label missing');
+    wpbr_live_assert(wpbr_live_contains($modal['body'], '7.1.4'), 'tested value missing');
     echo "EVIDENCE modal changelog, Requires WordPress Version 7.0, Compatible up to 7.1.4\n";
     wpbr_live_assert_log_empty($log);
 
@@ -183,8 +183,8 @@ function wpbr_live_failure(string $live, string $cookie, string $log, ?string $m
     wpbr_live_reset_cache($live);
     $response = wpbr_live_http('http://127.0.0.1:8090/wp-admin/plugins.php', $cookie);
     wpbr_live_assert($response['status'] === 200, $label . ' plugins.php status ' . $response['status']);
-    wpbr_live_assert(!str_contains($response['body'], 'There has been a critical error'), $label . ' fatals');
-    wpbr_live_assert(str_contains($response['body'], 'Enable auto-updates') || str_contains($response['body'], 'Disable auto-updates'), $label . ' toggle missing');
+    wpbr_live_assert(!wpbr_live_contains($response['body'], 'There has been a critical error'), $label . ' fatals');
+    wpbr_live_assert(wpbr_live_contains($response['body'], 'Enable auto-updates') || wpbr_live_contains($response['body'], 'Disable auto-updates'), $label . ' toggle missing');
     wpbr_live_assert_backoff(wpbr_live_read($live), $label);
     wpbr_live_assert_log_empty($log);
     echo "EVIDENCE {$label} plugins.php 200 backoff 1h\n";
@@ -387,9 +387,9 @@ add_filter(
             return $pre;
         }
         $body = '{"offers":[],"translations":[]}';
-        if (str_contains($url, '/plugins/update-check/')) {
+        if (strpos($url, '/plugins/update-check/') !== false) {
             $body = '{"plugins":{},"translations":[],"no_update":{}}';
-        } elseif (str_contains($url, '/themes/update-check/')) {
+        } elseif (strpos($url, '/themes/update-check/') !== false) {
             $body = '{"themes":{},"translations":[],"no_update":{}}';
         }
         return [
@@ -551,6 +551,11 @@ function wpbr_live_ctl(string $command): void
 
     fwrite(STDERR, "Unknown command {$command}\n");
     exit(1);
+}
+
+function wpbr_live_contains(string $haystack, string $needle): bool
+{
+    return $needle === '' || strpos($haystack, $needle) !== false;
 }
 
 function wpbr_live_installed_version(): string

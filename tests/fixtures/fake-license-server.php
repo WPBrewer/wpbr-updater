@@ -76,13 +76,13 @@ if (!class_exists('WpbrFakeLicenseServer', false)) {
             if ($path === '/health') {
                 return 'health';
             }
-            if ($method === 'POST' && str_ends_with($path, '/update-info')) {
+            if ($method === 'POST' && substr($path, -12) === '/update-info') {
                 return 'update-info';
             }
-            if ($method === 'GET' && str_contains($path, '/wp-json/wpbr-license/v1/info/')) {
+            if ($method === 'GET' && strpos($path, '/wp-json/wpbr-license/v1/info/') !== false) {
                 return 'info';
             }
-            if ($method === 'GET' && str_contains($path, '/wpbr-download/')) {
+            if ($method === 'GET' && strpos($path, '/wpbr-download/') !== false) {
                 return 'download';
             }
             return 'other';

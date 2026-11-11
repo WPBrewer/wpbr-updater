@@ -32,10 +32,10 @@ final class Domain
         }
 
         $host = strtolower($host);
-        if (str_starts_with($host, '[') && str_ends_with($host, ']')) {
+        if (substr($host, 0, 1) === '[' && substr($host, -1) === ']') {
             $host = substr($host, 1, -1);
         }
-        if (str_starts_with($host, 'www.')) {
+        if (substr($host, 0, 4) === 'www.') {
             $host = substr($host, 4);
         }
         $host = rtrim($host, '.');

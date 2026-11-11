@@ -39,9 +39,9 @@ tests_add_filter('pre_http_request', static function ($preempt, $args, $url) {
     }
 
     $body = '{"offers":[],"translations":[]}';
-    if (str_contains($url, '/plugins/update-check/')) {
+    if (strpos($url, '/plugins/update-check/') !== false) {
         $body = '{"plugins":{},"translations":[],"no_update":{}}';
-    } elseif (str_contains($url, '/themes/update-check/')) {
+    } elseif (strpos($url, '/themes/update-check/') !== false) {
         $body = '{"themes":{},"translations":[],"no_update":{}}';
     }
 

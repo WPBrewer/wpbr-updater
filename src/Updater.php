@@ -58,7 +58,7 @@ final class Updater
     {
         try {
             $updater = new self($config);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return;
         }
 
@@ -153,7 +153,7 @@ final class Updater
             $meta = is_array($data) ? $data : [];
             $value->no_update[$this->basename] = $this->item($this->version, '', $meta);
             return $value;
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return is_object($value) ? $value : new \stdClass();
         }
     }
@@ -208,7 +208,7 @@ final class Updater
                     'changelog' => nl2br(esc_html($changelog)),
                 ],
             ];
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return $result;
         }
     }
@@ -249,7 +249,7 @@ final class Updater
             }
 
             return $this->downloadVerified($package, $expected['sha256']);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return new WP_Error('wpbr_updater_error', 'Update could not be verified.');
         }
     }
@@ -542,7 +542,7 @@ final class Updater
                     'User-Agent' => 'WPBrewer-Updater/' . self::VERSION,
                 ],
             ]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             $this->unlink($tmp);
             return new WP_Error('wpbr_updater_download', 'Package download failed.');
         }
@@ -589,7 +589,7 @@ final class Updater
             } else {
                 $response = wp_remote_get($url, $args);
             }
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return $error;
         }
 
@@ -611,10 +611,10 @@ final class Updater
     {
         try {
             $decoded = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             return null;
         }
-        if (!is_array($decoded) || array_is_list($decoded)) {
+        if (!is_array($decoded) || self::isList($decoded)) {
             return null;
         }
 
@@ -715,7 +715,10 @@ final class Updater
         return $this->server . '/wp-json/wpbr-license/v1' . $path;
     }
 
-    private function stringOrEmpty(mixed $value): string
+    /**
+     * @param mixed $value
+     */
+    private function stringOrEmpty($value): string
     {
         return is_string($value) ? $value : '';
     }
@@ -757,6 +760,22 @@ final class Updater
         $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
         $path = isset($parts['path']) ? rtrim((string) $parts['path'], '/') : '';
         return $scheme . '://' . $host . $port . $path;
+    }
+
+    /**
+     * JSON arrays are lists. An empty object decodes to an empty list in PHP.
+     *
+     * @param array<mixed> $value
+     */
+    private static function isList(array $value): bool
+    {
+        foreach (array_keys($value) as $index => $key) {
+            if ($key !== $index) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function unlink(string $path): void
